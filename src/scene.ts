@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 /**
  * Creates and manages the retro 3D computer scene.
@@ -87,169 +88,217 @@ export class RetroComputerScene {
     }
 
     private buildComputer(): void {
-        // ---- Monitor Body ----
-        const monitorGeo = new THREE.BoxGeometry(2.0, 1.6, 1.4);
-        // Give edges a slight roundness
-        const monitorMat = new THREE.MeshStandardMaterial({
-            color: 0xd4cfc8,
-            roughness: 0.6,
-            metalness: 0.05,
-        });
-        const monitor = new THREE.Mesh(monitorGeo, monitorMat);
-        monitor.position.set(0, 1.6, 0);
-        monitor.castShadow = true;
-        monitor.receiveShadow = true;
-        this.computerGroup.add(monitor);
+        this.buildBaseUnit();
+        this.buildMonitor();
+        this.buildKeyboard();
+        this.buildMouse();
+        this.buildCables();
 
-        // Monitor bezel (inset slightly darker)
-        const bezelGeo = new THREE.BoxGeometry(2.05, 1.65, 0.05);
-        const bezelMat = new THREE.MeshStandardMaterial({
-            color: 0xb8b2a8,
-            roughness: 0.7,
-            metalness: 0.02,
-        });
-        const bezel = new THREE.Mesh(bezelGeo, bezelMat);
-        bezel.position.set(0, 1.6, 0.7);
-        this.computerGroup.add(bezel);
+        // Position the whole group — slightly raised so nothing clips
+        this.computerGroup.position.y = -0.3;
+        this.computerGroup.rotation.y = 0;
+    }
 
-        // ---- CRT Screen ----
-        const screenGeo = new THREE.PlaneGeometry(1.6, 1.1);
-        const screenMat = new THREE.MeshStandardMaterial({
-            color: 0x111111,
-            roughness: 0.2,
-            metalness: 0.3,
-            emissive: 0x00ffcc,
-            emissiveIntensity: 0.15,
-        });
-        const screen = new THREE.Mesh(screenGeo, screenMat);
-        screen.position.set(0, 1.65, 0.73);
-        this.screenMesh = screen;
-        this.computerGroup.add(screen);
-
-        // Screen text glow overlay
-        const glowGeo = new THREE.PlaneGeometry(1.55, 1.05);
-        const glowMat = new THREE.MeshBasicMaterial({
-            color: 0x00ffcc,
-            transparent: true,
-            opacity: 0.06,
-        });
-        const glowOverlay = new THREE.Mesh(glowGeo, glowMat);
-        glowOverlay.position.set(0, 1.65, 0.74);
-        this.computerGroup.add(glowOverlay);
-
-        // ---- Monitor Neck ----
-        const neckGeo = new THREE.CylinderGeometry(0.15, 0.2, 0.3, 16);
-        const neckMat = new THREE.MeshStandardMaterial({
-            color: 0xc5bfb5,
-            roughness: 0.5,
-            metalness: 0.1,
-        });
-        const neck = new THREE.Mesh(neckGeo, neckMat);
-        neck.position.set(0, 0.7, 0);
-        neck.castShadow = true;
-        this.computerGroup.add(neck);
-
-        // ---- Base Unit ----
-        const baseGeo = new THREE.BoxGeometry(2.4, 0.5, 1.8);
-        const baseMat = new THREE.MeshStandardMaterial({
-            color: 0xd4cfc8,
-            roughness: 0.65,
-            metalness: 0.05,
-        });
+    private buildBaseUnit(): void {
+        // Base Unit
+        const baseGeo = new RoundedBoxGeometry(2.4, 0.5, 2.0, 4, 0.05);
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0xd4cfc8, roughness: 0.65, metalness: 0.05 });
         const base = new THREE.Mesh(baseGeo, baseMat);
         base.position.set(0, 0.25, 0);
         base.castShadow = true;
         base.receiveShadow = true;
         this.computerGroup.add(base);
 
-        // Floppy drive slot
-        const floppyGeo = new THREE.BoxGeometry(0.6, 0.06, 0.02);
-        const floppyMat = new THREE.MeshStandardMaterial({
-            color: 0x3a3a3a,
-            roughness: 0.3,
-        });
-        const floppy = new THREE.Mesh(floppyGeo, floppyMat);
-        floppy.position.set(0.4, 0.35, 0.91);
-        this.computerGroup.add(floppy);
+        // Floppy drive bays (stacked on the right)
+        const floppyGeo = new RoundedBoxGeometry(0.5, 0.06, 0.02, 2, 0.01);
+        const floppyMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.3 });
 
-        // Second floppy
+        const floppy1 = new THREE.Mesh(floppyGeo, floppyMat);
+        floppy1.position.set(0.7, 0.35, 1.01);
+        this.computerGroup.add(floppy1);
+
         const floppy2 = new THREE.Mesh(floppyGeo, floppyMat);
-        floppy2.position.set(-0.4, 0.35, 0.91);
+        floppy2.position.set(0.7, 0.22, 1.01);
         this.computerGroup.add(floppy2);
 
-        // ---- Keyboard ----
-        // Base of the keyboard
-        const kbGeo = new THREE.BoxGeometry(2.1, 0.1, 0.8);
-        const kbMat = new THREE.MeshStandardMaterial({
-            color: 0xc8c3b9, // Match a beige/retro plastic
-            roughness: 0.9,
-            metalness: 0.05,
+        // Power button
+        const btnGeo = new RoundedBoxGeometry(0.1, 0.1, 0.02, 2, 0.02);
+        const btnMat = new THREE.MeshStandardMaterial({ color: 0xcc4444, roughness: 0.4 });
+        const pwrBtn = new THREE.Mesh(btnGeo, btnMat);
+        pwrBtn.position.set(-0.9, 0.25, 1.01);
+        this.computerGroup.add(pwrBtn);
+
+        // Badge
+        const badgeGeo = new THREE.BoxGeometry(0.2, 0.05, 0.01);
+        const badgeMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+        const badge = new THREE.Mesh(badgeGeo, badgeMat);
+        badge.position.set(-0.9, 0.38, 1.01);
+        this.computerGroup.add(badge);
+    }
+
+    private buildMonitor(): void {
+        // Monitor Body
+        const monitorGeo = new RoundedBoxGeometry(1.8, 1.5, 1.2, 4, 0.08);
+        const monitorMat = new THREE.MeshStandardMaterial({ color: 0xd4cfc8, roughness: 0.6, metalness: 0.05 });
+        const monitor = new THREE.Mesh(monitorGeo, monitorMat);
+        monitor.position.set(0, 1.6, 0.2);
+        monitor.castShadow = true;
+        monitor.receiveShadow = true;
+        this.computerGroup.add(monitor);
+
+        // Monitor tube / back
+        const tubeGeo = new RoundedBoxGeometry(1.4, 1.1, 0.6, 4, 0.1);
+        const tubeMat = new THREE.MeshStandardMaterial({ color: 0xc4bfb8, roughness: 0.7 });
+        const tube = new THREE.Mesh(tubeGeo, tubeMat);
+        tube.position.set(0, 1.6, -0.6);
+        tube.castShadow = true;
+        this.computerGroup.add(tube);
+
+        // Bezel
+        const bezelGeo = new RoundedBoxGeometry(1.82, 1.52, 0.05, 4, 0.02);
+        const bezelMat = new THREE.MeshStandardMaterial({ color: 0xb8b2a8, roughness: 0.7 });
+        const bezel = new THREE.Mesh(bezelGeo, bezelMat);
+        bezel.position.set(0, 1.6, 0.8);
+        this.computerGroup.add(bezel);
+
+        // CRT Screen
+        const screenGeo = new THREE.PlaneGeometry(1.5, 1.1);
+        const screenMat = new THREE.MeshStandardMaterial({
+            color: 0x111111, roughness: 0.2, metalness: 0.3,
+            emissive: 0x00ffcc, emissiveIntensity: 0.15,
         });
+        const screen = new THREE.Mesh(screenGeo, screenMat);
+        screen.position.set(0, 1.65, 0.83);
+        this.screenMesh = screen;
+        this.computerGroup.add(screen);
+
+        const glowGeo = new THREE.PlaneGeometry(1.45, 1.05);
+        const glowMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.06 });
+        const glowOverlay = new THREE.Mesh(glowGeo, glowMat);
+        glowOverlay.position.set(0, 1.65, 0.84);
+        this.computerGroup.add(glowOverlay);
+
+        // Power button on monitor
+        const monBtnGeo = new RoundedBoxGeometry(0.06, 0.06, 0.02, 2, 0.01);
+        const monBtnMat = new THREE.MeshStandardMaterial({ color: 0x44cc44 });
+        const monBtn = new THREE.Mesh(monBtnGeo, monBtnMat);
+        monBtn.position.set(0.7, 0.95, 0.83);
+        this.computerGroup.add(monBtn);
+
+        // Stand base
+        const standBaseGeo = new RoundedBoxGeometry(0.8, 0.05, 0.8, 4, 0.02);
+        const standBaseMat = new THREE.MeshStandardMaterial({ color: 0xd4cfc8, roughness: 0.6 });
+        const standBase = new THREE.Mesh(standBaseGeo, standBaseMat);
+        standBase.position.set(0, 0.52, 0.2);
+        this.computerGroup.add(standBase);
+
+        // Neck
+        const neckGeo = new THREE.CylinderGeometry(0.15, 0.25, 0.35, 16);
+        const neckMat = new THREE.MeshStandardMaterial({ color: 0xc5bfb5, roughness: 0.5 });
+        const neck = new THREE.Mesh(neckGeo, neckMat);
+        neck.position.set(0, 0.7, 0.2);
+        neck.castShadow = true;
+        this.computerGroup.add(neck);
+    }
+
+    private buildKeyboard(): void {
+        // Base Unit width = 2.4. Keyboard width = 2.2 < 2.4
+        const kbGeo = new RoundedBoxGeometry(2.2, 0.12, 0.8, 4, 0.04);
+        const kbMat = new THREE.MeshStandardMaterial({ color: 0xc8c3b9, roughness: 0.9, metalness: 0.05 });
         const keyboard = new THREE.Mesh(kbGeo, kbMat);
-        keyboard.position.set(0, 0.05, 1.7);
-        keyboard.rotation.x = -0.12; // Slight ergonomic tilt
+        keyboard.position.set(0, 0.06, 1.7);
+        keyboard.rotation.x = -0.08;
         keyboard.castShadow = true;
         this.computerGroup.add(keyboard);
 
-        // Key rows - make them look more like mechanical keys
-        const startX = -0.9;
-        const startZ = 1.45;
-        const keySpacingX = 0.145;
+        // Main alpha block
+        this.buildKeyBlock(-0.95, 1.45, 5, 13, 0.11);
+        // Nav block
+        this.buildKeyBlock(0.35, 1.45, 5, 3, 0.11);
+        // Numpad
+        this.buildKeyBlock(0.85, 1.45, 5, 4, 0.11);
+
+        // Add a wide spacebar manually
+        const spaceGeo = new RoundedBoxGeometry(0.6, 0.06, 0.09, 2, 0.01);
+        const spaceMat = new THREE.MeshStandardMaterial({ color: 0xe3decb, roughness: 0.8 });
+        const space = new THREE.Mesh(spaceGeo, spaceMat);
+        space.position.set(-0.45, 0.14, 1.97);
+        space.rotation.x = -0.08;
+        space.castShadow = true;
+        this.computerGroup.add(space);
+    }
+
+    private buildKeyBlock(startX: number, startZ: number, rows: number, cols: number, keyWidth: number): void {
+        const keySpacingX = keyWidth + 0.02;
         const keySpacingZ = 0.13;
 
-        for (let row = 0; row < 5; row++) {
-            // Top row usually has funkier spacing (function keys), but we'll do standard blocks
-            let cols = 13;
-            if (row === 4) cols = 7; // Bottom row (spacebar row) has fewer keys
+        const keyGeo = new RoundedBoxGeometry(keyWidth, 0.06, 0.09, 2, 0.01);
+        const alphaMat = new THREE.MeshStandardMaterial({ color: 0xe3decb, roughness: 0.8 });
+        const modMat = new THREE.MeshStandardMaterial({ color: 0xa8a49c, roughness: 0.8 });
 
-            for (let col = 0; col < cols; col++) {
-                let kw = 0.11;
-                let kx = startX + col * keySpacingX;
-                let kz = startZ + row * keySpacingZ;
+        for (let r = 0; r < rows; r++) {
+            // skip spacebar placeholder row for alpha block if we wanted, let's just leave it empty by reducing count or continuing
+            if (cols > 5 && r === 4) continue;
 
-                // Alternate key colors for realism (modifier keys vs alpha keys)
-                let isModifier = col === 0 || col === cols - 1;
-
-                // Make a spacebar on the bottom row
-                if (row === 4) {
-                    if (col === 3) {
-                        kw = 0.6; // Spacebar
-                        kx = startX + 3.5 * keySpacingX;
-                        isModifier = false;
-                    } else if (col > 3) {
-                        kx = startX + (col + 3) * keySpacingX;
-                        isModifier = true;
-                    } else {
-                        isModifier = true;
-                    }
-                }
-
-                // Return key logic
-                if (row === 2 && col === cols - 1) {
-                    kw = 0.18;
-                    kx -= 0.03;
-                }
-
-                const keyGeo = new THREE.BoxGeometry(kw, 0.06, 0.09);
-                const keyColor = isModifier ? 0xa8a49c : 0xe3decb;
-
-                const keyMat = new THREE.MeshStandardMaterial({
-                    color: keyColor,
-                    roughness: 0.8,
-                });
-                const key = new THREE.Mesh(keyGeo, keyMat);
-
-                // Position relative to keyboard body rotation
-                key.position.set(kx, 0.13, kz);
-                key.rotation.x = -0.12;
+            for (let c = 0; c < cols; c++) {
+                const isMod = c === 0 || c === cols - 1 || r === 0;
+                const mat = isMod ? modMat : alphaMat;
+                const key = new THREE.Mesh(keyGeo, mat);
+                key.position.set(startX + c * keySpacingX, 0.14, startZ + r * keySpacingZ);
+                key.rotation.x = -0.08;
                 key.castShadow = true;
                 this.computerGroup.add(key);
             }
         }
+    }
 
-        // Position the whole group — slightly raised so nothing clips
-        this.computerGroup.position.y = -0.3;
-        this.computerGroup.rotation.y = 0;
+    private buildMouse(): void {
+        const mouseGeo = new RoundedBoxGeometry(0.35, 0.15, 0.5, 4, 0.08);
+        const mouseMat = new THREE.MeshStandardMaterial({ color: 0xd4cfc8, roughness: 0.7 });
+        const mouse = new THREE.Mesh(mouseGeo, mouseMat);
+        mouse.position.set(1.4, 0.075, 1.7);
+        mouse.rotation.y = -0.1;
+        mouse.castShadow = true;
+        this.computerGroup.add(mouse);
+
+        // Mouse buttons
+        const btnGeo = new RoundedBoxGeometry(0.14, 0.04, 0.2, 2, 0.02);
+        const btnMat = new THREE.MeshStandardMaterial({ color: 0xc8c3b9, roughness: 0.8 });
+
+        const leftBtn = new THREE.Mesh(btnGeo, btnMat);
+        leftBtn.position.set(1.31, 0.15, 1.55);
+        leftBtn.rotation.y = -0.1;
+        this.computerGroup.add(leftBtn);
+
+        const rightBtn = new THREE.Mesh(btnGeo, btnMat);
+        rightBtn.position.set(1.49, 0.15, 1.55);
+        rightBtn.rotation.y = -0.1;
+        this.computerGroup.add(rightBtn);
+    }
+
+    private buildCables(): void {
+        const mat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+
+        // Mouse cable
+        const mouseCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(1.35, 0.05, 1.45),
+            new THREE.Vector3(1.2, 0.02, 1.1),
+            new THREE.Vector3(0.5, 0.02, 0.9),
+            new THREE.Vector3(0.0, 0.1, 0.9) // Entering base unit
+        ]);
+        const mouseCableGeo = new THREE.TubeGeometry(mouseCurve, 20, 0.015, 8, false);
+        const mouseCable = new THREE.Mesh(mouseCableGeo, mat);
+        this.computerGroup.add(mouseCable);
+
+        // Keyboard cable
+        const kbCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0, 0.06, 1.3),
+            new THREE.Vector3(-0.2, 0.02, 1.1),
+            new THREE.Vector3(0, 0.1, 0.9)
+        ]);
+        const kbCableGeo = new THREE.TubeGeometry(kbCurve, 10, 0.02, 8, false);
+        const kbCable = new THREE.Mesh(kbCableGeo, mat);
+        this.computerGroup.add(kbCable);
     }
 
     private addLights(): void {
