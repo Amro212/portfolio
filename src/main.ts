@@ -2,6 +2,12 @@ import './style.css';
 import { RetroComputerScene } from './scene';
 import { projects, type Project } from './projects';
 import { Terminal } from './terminal';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import Lenis from 'lenis';
+
+// Register GSAP Plugins
+gsap.registerPlugin(ScrollTrigger);
 
 // ─────────────────────────────────────────
 // 1. Initialize Three.js Scene
@@ -67,7 +73,7 @@ function createProjectCard(project: Project): string {
     : '';
 
   return `
-    <article class="project-card reveal" data-category="${project.category}">
+    <article class="project-card" data-category="${project.category}">
       <div class="project-card__titlebar">
         <span class="project-card__dot project-card__dot--red"></span>
         <span class="project-card__dot project-card__dot--yellow"></span>
@@ -98,25 +104,38 @@ function initProjectFilters(): void {
 }
 
 // ─────────────────────────────────────────
-// 5. Scroll Handling
+// 5. Smooth Scrolling (Lenis + GSAP)
+// ─────────────────────────────────────────
+function initSmoothScroll(): void {
+  const lenis = new Lenis({
+    duration: 1.2,
+    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // https://www.desmos.com/calculator/brs54l4xou
+    orientation: 'vertical',
+    gestureOrientation: 'vertical',
+    smoothWheel: true,
+  });
+
+  lenis.on('scroll', ScrollTrigger.update);
+
+  gsap.ticker.add((time) => {
+    lenis.raf(time * 1000);
+  });
+
+  gsap.ticker.lagSmoothing(0);
+}
+
+// ─────────────────────────────────────────
+// 6. Scroll Handling (Three.js Sync)
 // ─────────────────────────────────────────
 function initScrollHandlers(): void {
   const threeContainer = document.getElementById('three-container');
   const projectsSideNav = document.getElementById('projects-side-nav');
   const projectsSection = document.getElementById('projects');
-  const crtEl = document.querySelector('.crt') as HTMLElement | null;
-  const crtBezel = document.querySelector('.crt__bezel') as HTMLElement | null;
   const body = document.body;
-
-  function easeInOutCubic(t: number): number {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  }
 
   window.addEventListener('scroll', () => {
     const scrollY = window.scrollY;
     const windowHeight = window.innerHeight;
-    const viewW = window.innerWidth;
-    const viewH = window.innerHeight;
 
     // ----- Three.js scroll sync -----
     if (threeContainer && retroScene) {
@@ -153,26 +172,147 @@ function initScrollHandlers(): void {
 }
 
 // ─────────────────────────────────────────
-// 6. Scroll Reveal Observer
+// 7. Universal Magnetic Elements
 // ─────────────────────────────────────────
-function observeRevealElements(): void {
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target);
-        }
-      });
-    },
-    { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
-  );
+function initMagneticElements(): void {
+  const magnetics = document.querySelectorAll<HTMLElement>('[data-magnetic]');
 
-  document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+  magnetics.forEach((el) => {
+    // Optional inner content to drag further
+    const content = el.querySelector<HTMLElement>('[data-magnetic-content]') || el;
+
+    // Create highly optimized spring physics followers
+    const xTo = gsap.quickTo(el, 'x', { duration: 1, ease: 'elastic.out(1, 0.3)' });
+    const yTo = gsap.quickTo(el, 'y', { duration: 1, ease: 'elastic.out(1, 0.3)' });
+
+    const contentXTo = gsap.quickTo(content, 'x', { duration: 0.8, ease: 'power4.out' });
+    const contentYTo = gsap.quickTo(content, 'y', { duration: 0.8, ease: 'power4.out' });
+
+    el.addEventListener('mousemove', (e) => {
+      const rect = el.getBoundingClientRect();
+      const hw = rect.width / 2;
+      const hh = rect.height / 2;
+
+      const x = e.clientX - rect.left - hw;
+      const y = e.clientY - rect.top - hh;
+
+      // Move the container slightly
+      xTo(x * 0.4);
+      yTo(y * 0.4);
+
+      // Move the inner content more for parallax depth
+      if (content !== el) {
+        contentXTo(x * 0.6);
+        contentYTo(y * 0.6);
+      }
+    });
+
+    el.addEventListener('mouseleave', () => {
+      xTo(0);
+      yTo(0);
+      if (content !== el) {
+        contentXTo(0);
+        contentYTo(0);
+      }
+    });
+  });
 }
 
 // ─────────────────────────────────────────
-// 7. Interactive Terminal on Canvas
+// 8. Scroll Reveal Observer & Stagger (Projects)
+// ─────────────────────────────────────────
+function observeRevealElements(): void {
+  // We use GSAP batch to animate project cards in groups as they enter
+  const cards = gsap.utils.toArray<HTMLElement>('.project-card');
+
+  // Set initial invisible state manually rather than CSS to ensure ScrollTrigger handles it
+  gsap.set(cards, { y: 60, opacity: 0 });
+
+  ScrollTrigger.batch(cards, {
+    start: 'top 85%',
+    onEnter: (elements) => {
+      gsap.to(elements, {
+        y: 0,
+        opacity: 1,
+        stagger: 0.15,
+        duration: 0.8,
+        ease: 'power3.out',
+        overwrite: true
+      });
+    },
+    // Optional: animate out when scrolling back up past them, or just leave them
+    once: true // Only animate in once
+  });
+}
+
+// ─────────────────────────────────────────
+// 9. Advanced Text Stagger Reveals (GSAP)
+// ─────────────────────────────────────────
+function initTextReveals(): void {
+  const revealElements = document.querySelectorAll<HTMLElement>('.reveal-text');
+
+  revealElements.forEach((el) => {
+    // 1. Split text into words and characters structurally
+    const text = (el.textContent || '').trim();
+    if (!text) return; // Skip if somehow still empty
+
+    el.innerHTML = ''; // Clear original text
+
+    // Accessibility: keep the original text readable by screen readers
+    el.setAttribute('aria-label', text);
+
+    const words = text.split(/\s+/); // Split on any whitespace
+    const charsContainer: HTMLElement[] = [];
+
+    words.forEach((word) => {
+      const wordSpan = document.createElement('span');
+      wordSpan.className = 'reveal-word';
+      wordSpan.style.display = 'inline-block';
+      wordSpan.style.overflow = 'hidden';
+      wordSpan.style.verticalAlign = 'bottom';
+      // Preserve spaces between words
+      wordSpan.style.marginRight = '0.25em';
+
+      const chars = word.split('');
+      chars.forEach((char) => {
+        const charSpan = document.createElement('span');
+        charSpan.className = 'reveal-char';
+        charSpan.style.display = 'inline-block';
+        charSpan.innerText = char;
+        wordSpan.appendChild(charSpan);
+        charsContainer.push(charSpan);
+      });
+
+      el.appendChild(wordSpan);
+    });
+
+    // 2. Animate the characters with GSAP ScrollTrigger
+    gsap.fromTo(
+      charsContainer,
+      {
+        y: '100%',
+        rotation: 3,
+        opacity: 0
+      },
+      {
+        y: '0%',
+        rotation: 0,
+        opacity: 1,
+        duration: 0.8,
+        ease: 'power4.out',
+        stagger: 0.015,
+        scrollTrigger: {
+          trigger: el,
+          start: 'top 85%', // Trigger when top of element hits 85% down viewport
+          toggleActions: 'play none none none' // Only play once
+        }
+      }
+    );
+  });
+}
+
+// ─────────────────────────────────────────
+// 10. Interactive Terminal on Canvas
 // ─────────────────────────────────────────
 function initTerminal(): void {
   if (retroScene) {
@@ -187,20 +327,25 @@ function initTerminal(): void {
     }
   }
 }
+// (Removed legacy addRevealClasses function)
 // ─────────────────────────────────────────
-// 8. Add reveal classes to static sections
+// 11. Section Parallax (GSAP Scrub)
 // ─────────────────────────────────────────
-function addRevealClasses(): void {
-  const selectors = [
-    '.about__heading',
-    '.about__content',
-    '.projects__header',
-    '.contact__heading',
-    '.contact__text',
-  ];
-  selectors.forEach((sel) => {
-    document.querySelectorAll(sel).forEach((el) => {
-      el.classList.add('reveal');
+function initParallax(): void {
+  const parallaxElements = document.querySelectorAll<HTMLElement>('[data-parallax]');
+
+  parallaxElements.forEach((el) => {
+    const speed = parseFloat(el.getAttribute('data-parallax') || '1');
+
+    gsap.to(el, {
+      yPercent: speed * 30, // Move up/down by up to 30% of its height based on speed attribute
+      ease: 'none',
+      scrollTrigger: {
+        trigger: el,
+        start: 'top bottom', // Start when top of element hits bottom of viewport
+        end: 'bottom top',   // End when bottom of element hits top of viewport
+        scrub: true          // Tie directly to scrollbar position
+      }
     });
   });
 }
@@ -209,11 +354,14 @@ function addRevealClasses(): void {
 // INIT
 // ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  initSmoothScroll();
+  initMagneticElements();
+  initTextReveals();
+  initParallax();
   initScene();
   initNavigation();
   renderProjects();
   initProjectFilters();
-  addRevealClasses();
   observeRevealElements();
   initScrollHandlers();
   initTerminal();
