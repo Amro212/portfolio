@@ -25,8 +25,8 @@ export class RetroComputerScene {
     // Scroll moves camera Z back AND transforms the computer group
     // Math: screen at z=0.73, height=1.1, FOV=75
     //   distance = (0.55) / tan(37.5°) ≈ 0.72 → camera z ≈ 1.45
-    private readonly CAMERA_FOV = 75;
-    private readonly CAM_Z_START = 1.50;   // Exact distance for screen to fill viewport
+    private readonly CAMERA_FOV = 80;
+    private readonly CAM_Z_START = 1.60;   // Exact distance for screen to fill viewport
     private readonly CAM_Z_END = 5.0;      // Pulled back (full computer visible, not too small)
 
     // Model position at scroll progress
