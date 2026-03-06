@@ -343,6 +343,20 @@ ol {
   /* This div is just a scroll-height spacer; the canvas is fixed */
 }
 
+/* Blur overlay that sits on top of the 3D canvas */
+.three-blur-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+  pointer-events: none;
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  transition: backdrop-filter 0.05s linear, -webkit-backdrop-filter 0.05s linear;
+}
+
 .three-container canvas {
   position: fixed;
   top: 0;
@@ -356,9 +370,9 @@ ol {
 /* ---------- About Section ---------- */
 .about {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   padding: var(--space-3xl) var(--space-lg);
-  background: var(--about-bg-gradient);
+  background: transparent;
   min-height: 80vh;
   display: flex;
   flex-direction: column;
@@ -366,17 +380,7 @@ ol {
   justify-content: center;
 }
 
-/* Smooth gradient transition INTO the about section */
-.about::before {
-  content: '';
-  position: absolute;
-  top: -80px;
-  left: 0;
-  right: 0;
-  height: 80px;
-  background: linear-gradient(to bottom, transparent, #0f1923);
-  pointer-events: none;
-}
+/* Gradient transition removed — blur overlay handles the transition */
 
 .about__heading {
   font-family: var(--font-pixel);
@@ -418,7 +422,7 @@ ol {
 /* ---------- Projects Section ---------- */
 .projects {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   padding: var(--space-3xl) var(--space-lg);
   padding-left: 80px;
   background: var(--projects-bg);
@@ -627,7 +631,7 @@ ol {
 /* ---------- Contact Section ---------- */
 .contact {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   padding: var(--space-3xl) var(--space-lg);
   background: var(--contact-bg);
   text-align: center;

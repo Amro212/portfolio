@@ -129,6 +129,8 @@ function initSmoothScroll(): void {
 // ─────────────────────────────────────────
 function initScrollHandlers(): void {
   const threeContainer = document.getElementById('three-container');
+  const blurOverlay = document.getElementById('three-blur-overlay');
+  const aboutSection = document.getElementById('about');
   const projectsSideNav = document.getElementById('projects-side-nav');
   const projectsSection = document.getElementById('projects');
   const body = document.body;
@@ -145,11 +147,62 @@ function initScrollHandlers(): void {
       const progress = (scrollY - containerTop) / scrollRange;
       retroScene.setScrollProgress(progress);
 
-      // Show canvas only when scrolled within the three-container range
-      const canvas = threeContainer.querySelector('canvas');
-      if (canvas) {
-        const inRange = scrollY >= containerTop - windowHeight && scrollY <= containerTop + containerHeight;
-        canvas.style.opacity = inRange ? '1' : '0';
+      // ----- Progressive blur on the 3D model -----
+      // Phase 1: Blur ramps up from 0 to initialMax within three-container (progress 0.65→1.0)
+      // Phase 2: Blur continues increasing through about section (14→30px)
+      // Phase 3: Canvas fades out near the end of about section
+      if (blurOverlay) {
+        const blurStart = 0.65;      // When blur begins (65% through three-container scroll)
+        const initialMaxBlur = 14;   // Blur at end of three-container range
+        const finalMaxBlur = 30;     // Maximum blur deep in the about section
+
+        // Calculate how far past three-container we are (into about section)
+        const containerEnd = containerTop + containerHeight;
+        const pastContainer = scrollY - (containerEnd - windowHeight);
+
+        if (progress <= blurStart) {
+          // Before blur zone — no blur
+          blurOverlay.style.backdropFilter = 'blur(0px)';
+          (blurOverlay.style as any).webkitBackdropFilter = 'blur(0px)';
+          blurOverlay.style.opacity = '0';
+        } else if (progress < 1.0) {
+          // Phase 1: Within three-container, ramp blur from 0 to initialMaxBlur
+          const blurProgress = (progress - blurStart) / (1.0 - blurStart);
+          const eased = blurProgress * blurProgress;
+          const blurValue = eased * initialMaxBlur;
+          blurOverlay.style.backdropFilter = `blur(${blurValue.toFixed(1)}px)`;
+          (blurOverlay.style as any).webkitBackdropFilter = `blur(${blurValue.toFixed(1)}px)`;
+          blurOverlay.style.opacity = '1';
+        } else {
+          // Phase 2: Past three-container, continue increasing blur through about section
+          // Calculate how far into the about section we are
+          const aboutHeight = aboutSection ? aboutSection.offsetHeight : windowHeight;
+          const aboutProgress = Math.min(1, pastContainer / aboutHeight);
+          const blurValue = initialMaxBlur + (finalMaxBlur - initialMaxBlur) * aboutProgress;
+          blurOverlay.style.backdropFilter = `blur(${blurValue.toFixed(1)}px)`;
+          (blurOverlay.style as any).webkitBackdropFilter = `blur(${blurValue.toFixed(1)}px)`;
+          blurOverlay.style.opacity = '1';
+        }
+
+        // Fade the canvas out towards end of about section so it doesn't bleed into projects
+        const canvas = threeContainer.querySelector('canvas') as HTMLCanvasElement;
+        if (canvas) {
+          if (projectsSection) {
+            const projectsTop = projectsSection.offsetTop;
+            const fadeStart = projectsTop - windowHeight * 1.5;
+            const fadeEnd = projectsTop - windowHeight * 0.5;
+
+            if (scrollY <= fadeStart) {
+              canvas.style.opacity = '1';
+            } else if (scrollY >= fadeEnd) {
+              canvas.style.opacity = '0';
+              blurOverlay.style.opacity = '0';
+            } else {
+              const fadeProgress = (scrollY - fadeStart) / (fadeEnd - fadeStart);
+              canvas.style.opacity = `${(1 - fadeProgress).toFixed(2)}`;
+            }
+          }
+        }
       }
 
       // Update body background to match Three.js background
